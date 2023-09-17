@@ -87,6 +87,7 @@ namespace StarterAssets
         private float _targetRotation = 0.0f;
         private float _rotationVelocity;
         private float _verticalVelocity;
+        private float _gravitySpeed = 9.8f;
         private float _terminalVelocity = 53.0f;
 
         // timeout deltatime
@@ -160,6 +161,7 @@ namespace StarterAssets
             _hasAnimator = TryGetComponent(out _animator);
 
             Gravity = Physics.gravity.y;
+            ChangeGravityByPlatform();
             JumpAndGravity();
             GroundedCheck();
             Move();
@@ -197,23 +199,48 @@ namespace StarterAssets
 
         private void CameraRotation()
         {
+            float dot = Vector3.Dot(Vector3.up, this.transform.up);
+            if (dot > 1f)
+                dot = 1f;
+            if (dot < -1f)
+                dot = -1f;
+            float angleZ = Mathf.Acos(dot) * Mathf.Rad2Deg;
             // if there is an input and camera position is not fixed
             if (_input.look.sqrMagnitude >= _threshold && !LockCameraPosition)
             {
+                float sign = 1f;
                 //Don't multiply mouse input by Time.deltaTime;
                 float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-
-                _cinemachineTargetYaw += _input.look.x * deltaTimeMultiplier;
-                _cinemachineTargetPitch += _input.look.y * deltaTimeMultiplier;
+                if (Mathf.Abs(angleZ) > 90f)
+                {
+                    sign = -sign;
+                }
+                _cinemachineTargetYaw += sign * _input.look.x * deltaTimeMultiplier;
+                _cinemachineTargetPitch += sign * _input.look.y * deltaTimeMultiplier;
             }
-
+            dot = Vector3.Dot(Vector3.up, this.transform.up);
+            if (dot > 1f)
+                dot = 1f;
+            if (dot < -1f)
+                dot = -1f;
+            angleZ = Mathf.Acos(dot) * Mathf.Rad2Deg;
             // clamp our rotations so our values are limited 360 degrees
             _cinemachineTargetYaw = ClampAngle(_cinemachineTargetYaw, float.MinValue, float.MaxValue);
             _cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
 
             // Cinemachine will follow this target
-            CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + CameraAngleOverride, _cinemachineTargetYaw, 0.0f);
+            CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + CameraAngleOverride, _cinemachineTargetYaw, angleZ);
             //CinemachineCameraTarget.transform.rotation += Quaternion.FromToRotation(CinemachineCameraTarget.transform.rotation, );
+        }
+        void ChangeGravityByPlatform()
+        {
+            float distance = 10f;
+
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, -transform.up, out hit, distance))
+            {
+                //Physics.gravity = -hit.normal * _gravitySpeed;
+            }
         }
 
         private void Move()
@@ -265,10 +292,7 @@ namespace StarterAssets
                 float rotationY = Mathf.SmoothDampAngle(transform.eulerAngles.y, _targetRotation, ref _rotationVelocity, RotationSmoothTime);
 
                 // rotate to face input direction relative to camera position
-
-                //transform.rotation = Quaternion.Euler(0, rotationY, 0);
                 transform.up = -Physics.gravity;
-                //Debug.DrawRay(transform.position, new Vector3(0.0f, _targetRotation, 0.0f) * 10f, Color.red);
                 Vector3 cameraForward = _mainCamera.transform.forward;
                 cameraForward.y = 0.0f;
                 cameraForward.Normalize();
@@ -276,21 +300,15 @@ namespace StarterAssets
                 float inputRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg;
                 Quaternion rotationQuaternion = Quaternion.AngleAxis(inputRotation + 90, transform.up);
                 Vector3 rotatedVector = rotationQuaternion * forwardDirection;
-                //Debug.DrawRay(transform.position, rotatedVector.normalized * 10f, Color.red);
-                //Debug.DrawRay(transform.position, _mainCamera.transform.forward * 10f, Color.blue);
-                transform.rotation = Quaternion.LookRotation(rotatedVector, -Physics.gravity);
-                //Vector3 localInputDirection = rotation * inputDirection;
-                //Debug.DrawRay(transform.position, localInputDirection * 10f, Color.green);
-                //transform.rotation = Quaternion.LookRotation(localInputDirection.normalized, -Physics.gravity);            
+                transform.rotation = Quaternion.LookRotation(rotatedVector, -Physics.gravity);       
             }
 
-            //Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * transform.forward;
             Vector3 targetDirection = transform.forward;
 
 
             // move the player
-            _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) +
-                             new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+            _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+            //_controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + -transform.up.normalized * _gravityVelocity * Time.deltaTime);
 
             // update animator if using character
             if (_hasAnimator)

@@ -11,7 +11,6 @@ public class GravityController : MonoBehaviour
 
     private void Update()
     {
-        MainCameraTransform.up = -Physics.gravity;
         if (Input.GetKeyDown(KeyCode.V))
         {
             if (_checkVKey)
@@ -31,19 +30,19 @@ public class GravityController : MonoBehaviour
         {
             CharacterTransform.position = new Vector3(0, 0, 0);
         }
-        if (Input.GetKeyDown(KeyCode.I))
+        if (Input.GetKeyDown(KeyCode.U))
         {
             Physics.gravity = new Vector3(0, 9.8f, 0);
         }
-        else if (Input.GetKeyDown(KeyCode.O))
+        else if (Input.GetKeyDown(KeyCode.I))
         {
             Physics.gravity = new Vector3(0, -9.8f, 0);
         }
-        else if (Input.GetKeyDown(KeyCode.P))
+        else if (Input.GetKeyDown(KeyCode.O))
         {
             Physics.gravity = new Vector3(-9.8f, 0, 0);
         }
-        else if (Input.GetKeyDown(KeyCode.U))
+        else if (Input.GetKeyDown(KeyCode.P))
         {
             Physics.gravity = new Vector3(9.8f, 0, 0);
         }

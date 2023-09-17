@@ -70,3 +70,7 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+/[Aa]ssets/_GAME/*
+/[Aa]ssets/DuckVil/*
+/[Aa]ssets/Plugins/*
+/[Aa]ssets/Wand and Circles/*
