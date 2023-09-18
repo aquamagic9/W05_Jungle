@@ -6,9 +6,12 @@ using DG.Tweening;
 public class BlackCube : MonoBehaviour
 {
     private Material _mat;
+    private BoxCollider _boxCollider;
     void Start()
     {
         _mat = gameObject.GetComponent<MeshRenderer>().material;
+        _boxCollider = gameObject.GetComponent<BoxCollider>();
+
     }
     private void OnCollisionEnter(Collision collision)
     {
@@ -28,7 +31,7 @@ public class BlackCube : MonoBehaviour
 
     void FadeOut()
     {
-        _mat.DOColor(Color.red, 1f).OnComplete(() =>
+        _mat.DOColor(Color.red, 2f).OnComplete(() =>
         {
             this.gameObject.SetActive(false);
         });

@@ -13,6 +13,7 @@ namespace StarterAssets
 		public bool jump;
 		public bool sprint;
 		public bool roll;
+		public bool select;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
@@ -49,6 +50,11 @@ namespace StarterAssets
         {
 			RollInput(value.isPressed);
         }
+
+		public void OnSelect(InputValue value)
+		{
+			SelectInput(value.isPressed);
+		}
 #endif
 
 
@@ -75,6 +81,10 @@ namespace StarterAssets
 		{
 			roll = newRollState;
 		}
+		public void SelectInput(bool newSelectState)
+        {
+			select = newSelectState;
+        }
 
 
 		private void OnApplicationFocus(bool hasFocus)

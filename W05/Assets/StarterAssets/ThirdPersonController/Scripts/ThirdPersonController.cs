@@ -1,4 +1,6 @@
-﻿ using UnityEngine;
+﻿using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
 #endif
@@ -101,6 +103,12 @@ namespace StarterAssets
         private int _animIDMotionSpeed;
         private int _animIDRoll;
 
+        //Cube
+        private GameObject _selectedBlueCube;
+
+        //Layer
+        private int _layerMask = 1 << 6;
+
 #if ENABLE_INPUT_SYSTEM 
         private PlayerInput _playerInput;
 #endif
@@ -165,6 +173,7 @@ namespace StarterAssets
             JumpAndGravity();
             GroundedCheck();
             Move();
+            HitBlueCube();
         }
 
         private void LateUpdate()
@@ -446,6 +455,53 @@ namespace StarterAssets
             if (animationEvent.animatorClipInfo.weight > 0.5f)
             {
                // AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
+            }
+        }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (hit.gameObject.CompareTag("BlackCube"))
+            {
+                StartCoroutine(ActiveObjectAfterDelay(hit.gameObject, 5f));
+            }
+        }
+        private IEnumerator ActiveObjectAfterDelay(GameObject obj, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            obj.GetComponent<MeshRenderer>().material.color = Color.black;
+            obj.SetActive(true);
+        }
+
+        private void HitBlueCube()
+        {
+            RaycastHit hit;
+            float distance = 50f;
+            Debug.DrawRay(_mainCamera.transform.position, _mainCamera.transform.forward * distance, Color.black);
+            if (Physics.Raycast(_mainCamera.transform.position, _mainCamera.transform.forward, out hit, distance, _layerMask))
+            {
+                if (hit.transform.gameObject.CompareTag("BlueCube"))
+                {
+                    Debug.DrawRay(_mainCamera.transform.position, _mainCamera.transform.forward * distance, Color.red);
+                    Outline outline = hit.transform.gameObject.GetComponent<Outline>();
+                    _selectedBlueCube = hit.transform.gameObject;
+                    _selectedBlueCube.GetComponent<Outline>().enabled = true;
+                    outline.OutlineMode = Outline.Mode.OutlineAll;
+                    if (_input.select)
+                    {
+                        _selectedBlueCube.GetComponent<BlueCube>().CubeMove();
+                        _input.select = false;
+                    }
+                }
+            }
+            else
+            {
+                if (_selectedBlueCube != null)
+                {
+                    _input.select = false;
+                    _selectedBlueCube.GetComponent<Outline>().OutlineMode = Outline.Mode.OutlineHidden;
+                    _selectedBlueCube.GetComponent<Outline>().enabled = false;
+                    _selectedBlueCube = null;
+                }
             }
         }
     }
