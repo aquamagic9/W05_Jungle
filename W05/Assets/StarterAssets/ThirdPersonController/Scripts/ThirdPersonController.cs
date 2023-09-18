@@ -8,7 +8,6 @@ using UnityEngine.InputSystem;
 
 namespace StarterAssets
 {
-    [RequireComponent(typeof(CharacterController))]
 #if ENABLE_INPUT_SYSTEM 
     [RequireComponent(typeof(PlayerInput))]
 #endif
@@ -38,8 +37,8 @@ namespace StarterAssets
         [Tooltip("The height the player can jump")]
         public float JumpHeight = 1.2f;
 
-        [Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
-        public float Gravity = -15.0f;
+        //[Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
+        //public float Gravity = -15.0f;
 
         [Space(10)]
         [Tooltip("Time required to pass before being able to jump again. Set to 0f to instantly jump again")]
@@ -87,7 +86,7 @@ namespace StarterAssets
         private float _targetRotation = 0.0f;
         private float _rotationVelocity;
         private float _verticalVelocity;
-        private float _gravitySpeed = 9.8f;
+        private float _gravitySpeed = -9.8f;
         private float _terminalVelocity = 53.0f;
 
         // timeout deltatime
@@ -107,6 +106,7 @@ namespace StarterAssets
 #endif
         private Animator _animator;
         private CharacterController _controller;
+        private Rigidbody _rigidbody;
         private StarterAssetsInputs _input;
         private GameObject _mainCamera;
 
@@ -145,6 +145,7 @@ namespace StarterAssets
             _input = GetComponent<StarterAssetsInputs>();
 #if ENABLE_INPUT_SYSTEM 
             _playerInput = GetComponent<PlayerInput>();
+            _rigidbody = GetComponent<Rigidbody>();
 #else
 			Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
 #endif
@@ -160,8 +161,7 @@ namespace StarterAssets
         {
             _hasAnimator = TryGetComponent(out _animator);
 
-            Gravity = Physics.gravity.y;
-            ChangeGravityByPlatform();
+            //ChangeGravityByPlatform();
             JumpAndGravity();
             GroundedCheck();
             Move();
@@ -229,7 +229,7 @@ namespace StarterAssets
             _cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
 
             // Cinemachine will follow this target
-            CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + CameraAngleOverride, _cinemachineTargetYaw, angleZ);
+            CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + CameraAngleOverride, _cinemachineTargetYaw, 0.0f) * Quaternion.Euler(0f,0f,angleZ);
             //CinemachineCameraTarget.transform.rotation += Quaternion.FromToRotation(CinemachineCameraTarget.transform.rotation, );
         }
         void ChangeGravityByPlatform()
@@ -239,7 +239,10 @@ namespace StarterAssets
             RaycastHit hit;
             if (Physics.Raycast(transform.position, -transform.up, out hit, distance))
             {
-                //Physics.gravity = -hit.normal * _gravitySpeed;
+                Debug.DrawRay(transform.position, hit.normal * 30f, Color.red);
+                Physics.gravity = hit.normal * _gravitySpeed;
+                transform.up = -Physics.gravity;
+                //_controller.transform.up = -Physics.gravity;
             }
         }
 
@@ -298,7 +301,7 @@ namespace StarterAssets
                 cameraForward.Normalize();
                 Vector3 forwardDirection = Vector3.Cross(Physics.gravity, cameraForward).normalized;
                 float inputRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg;
-                Quaternion rotationQuaternion = Quaternion.AngleAxis(inputRotation + 90, transform.up);
+                Quaternion rotationQuaternion = Quaternion.AngleAxis(inputRotation + 90f, transform.up);
                 Vector3 rotatedVector = rotationQuaternion * forwardDirection;
                 transform.rotation = Quaternion.LookRotation(rotatedVector, -Physics.gravity);       
             }
@@ -307,9 +310,9 @@ namespace StarterAssets
 
 
             // move the player
-            _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
-            //_controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + -transform.up.normalized * _gravityVelocity * Time.deltaTime);
-
+            //_controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+            _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + _verticalVelocity * transform.up.normalized * Time.deltaTime);
+            //_rigidbody.velocity = targetDirection.normalized * (_speed ) + _verticalVelocity * transform.up.normalized ;
             // update animator if using character
             if (_hasAnimator)
             {
@@ -333,20 +336,16 @@ namespace StarterAssets
                 }
 
                 // stop our velocity dropping infinitely when grounded
-                if (Gravity < 0.0f && _verticalVelocity < 0.0f)
+                if (_verticalVelocity < 0.0f)
                 {
                     _verticalVelocity = -2f;
-                }
-                else if (Gravity > 0.0f && _verticalVelocity > 0.0f)
-                {
-                    _verticalVelocity = 2f;
                 }
 
                 // Jump
                 if (_input.jump && _jumpTimeoutDelta <= 0.0f)
                 {
                     // the square root of H * -2 * G = how much velocity needed to reach desired height
-                    _verticalVelocity = -Mathf.Sign(Gravity)* Mathf.Sqrt(JumpHeight * -2f * -Mathf.Abs(Gravity));
+                    _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * -Mathf.Abs(_gravitySpeed));
 
                     // update animator if using character
                     if (_hasAnimator)
@@ -387,7 +386,7 @@ namespace StarterAssets
             // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
             if (_verticalVelocity < _terminalVelocity)
             {
-                _verticalVelocity += Gravity * Time.deltaTime;
+                _verticalVelocity += _gravitySpeed * Time.deltaTime;
             }
         }
 
@@ -437,7 +436,7 @@ namespace StarterAssets
                 if (FootstepAudioClips.Length > 0)
                 {
                     var index = Random.Range(0, FootstepAudioClips.Length);
-                    AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.TransformPoint(_controller.center), FootstepAudioVolume);
+                    //AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.TransformPoint(_controller.center), FootstepAudioVolume);
                 }
             }
         }
@@ -446,7 +445,7 @@ namespace StarterAssets
         {
             if (animationEvent.animatorClipInfo.weight > 0.5f)
             {
-                AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
+               // AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             }
         }
     }
